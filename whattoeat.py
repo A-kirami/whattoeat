@@ -51,4 +51,4 @@ async def net_ease_cloud_word(bot,ev:CQEvent):
         to_eat += f'\n{foodimg}'
     except Exception as e:
         hoshino.logger.error(f'读取食物图片时发生错误{type(e)}')
-    await bot.send(ev, to_eat)
+    await bot.send(ev, to_eat, at_sender=True)
