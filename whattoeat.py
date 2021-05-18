@@ -1,5 +1,6 @@
-import requests,random,os,json
-from hoshino import Service,R,priv
+import requests,random,os,json, re, filetype
+from hoshino import Service,R,priv, aiorequests
+from hoshino.config import RES_DIR
 from hoshino.typing import CQEvent
 from hoshino.util import DailyNumberLimiter
 import hoshino
@@ -20,11 +21,10 @@ sv = Service(
 
 _day_limit = 5
 _lmt = DailyNumberLimiter(_day_limit)
-absPath = './hoshino/modules/whattoeat/'
 
 def get_foods():
-    if os.path.exists(absPath + 'foods.json'):
-        with open(absPath + 'foods.json',"r",encoding='utf-8') as dump_f:
+    if os.path.exists(os.path.join(os.path.dirname(__file__), 'foods.json')):
+        with open(os.path.join(os.path.dirname(__file__), 'foods.json'),"r",encoding='utf-8') as dump_f:
             try:
                 words = json.load(dump_f)
             except Exception as e:
@@ -34,7 +34,7 @@ def get_foods():
         hoshino.logger.error(f'目录下未找到食谱')
     keys = list(words.keys())
     key = random.choice(keys)
-    return words[key]["name"]
+    return words[key]
 
 @sv.on_rex(r'^(今天|[早中午晚][上饭餐午]|夜宵)吃(什么|啥|点啥)')
 async def net_ease_cloud_word(bot,ev:CQEvent):
@@ -44,11 +44,58 @@ async def net_ease_cloud_word(bot,ev:CQEvent):
     _lmt.increase(uid)
     match = ev.match
     time = match.group(1).strip()
-    food_name = get_foods()
-    to_eat = f'{time}去吃{food_name}吧~'
+    food = get_foods()
+    to_eat = f'{time}去吃{food["name"]}吧~'
     try:
-        foodimg = ' '.join(map(str, [R.img(f'foods/{food_name}.jpg').cqcode,]))
-        to_eat += f'\n{foodimg}'
+        if "pic" in food:
+            foodimg = str(R.img(f'foods/{food["pic"]}').cqcode)
+        else:
+            foodimg = str(R.img(f'foods/{food["name"]}.jpg').cqcode)
+        to_eat = to_eat+foodimg
     except Exception as e:
         hoshino.logger.error(f'读取食物图片时发生错误{type(e)}')
     await bot.send(ev, to_eat, at_sender=True)
+    _lmt.increase(uid)
+
+                                
+async def download_async(url: str, save_path: str, save_name: str, auto_extension=False):
+    async with aiorequests.get(url, stream=True) as resp:
+        if resp.status == 404:
+            raise ValueError('文件不存在')
+        content = await resp.read()
+        if auto_extension: #没有指定后缀，自动识别后缀名
+            try:
+                extension = filetype.guess_mime(content).split('/')[1]
+            except:
+                raise ValueError('不是有效文件类型')
+            abs_path = os.path.join(save_path, f'{save_name}.{extension}')
+        else:
+            abs_path = os.path.join(save_path, save_name)
+        with open(abs_path, 'wb') as f:
+            f.write(content)
+            return abs_path
+                                
+                                
+@sv.on_prefix('添菜')
+async def add_food(bot,ev:CQEvent):
+    if not priv.check_priv(ev, priv.ADMIN):
+        await bot.send(ev,'此命令仅管理员可用~')
+        return
+    food = ev.message.extract_plain_text().strip()
+    ret = re.search(r"\[CQ:image,file=(.*)?,url=(.*)\]", str(ev.message))
+    if not ret:
+        await bot.send(ev,'请附带美食图片~')
+        return
+    hash = ret.group(1)
+    url = ret.group(2)
+    savepath = os.path.join(os.path.expanduser(RES_DIR), 'img', 'foods')
+    if not os.path.exists(savepath):
+        os.mkdir(savepath)
+    imgpath = await download_async(url, savepath, str(food), auto_extension=True)
+    pic = os.path.split(imgpath)[1]
+    with open(os.path.join(os.path.dirname(__file__), 'foods.json'),"r",encoding='utf-8') as dump_f:
+        words = json.load(dump_f)
+    words[hash] = {"name":food, "pic":pic}
+    with open(os.path.join(os.path.dirname(__file__), 'foods.json'),'w',encoding='utf8') as f:
+        json.dump(words, f, ensure_ascii=False,indent=2)
+    await bot.send(ev,'食谱已增加~')
