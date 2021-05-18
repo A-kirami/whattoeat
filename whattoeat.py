@@ -41,7 +41,6 @@ async def net_ease_cloud_word(bot,ev:CQEvent):
     uid = ev.user_id
     if not _lmt.check(uid):
         return
-    _lmt.increase(uid)
     match = ev.match
     time = match.group(1).strip()
     food = get_foods()
