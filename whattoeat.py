@@ -59,21 +59,21 @@ async def net_ease_cloud_word(bot,ev:CQEvent):
 
                                 
 async def download_async(url: str, save_path: str, save_name: str, auto_extension=False):
-    async with aiorequests.get(url, stream=True) as resp:
-        if resp.status == 404:
-            raise ValueError('文件不存在')
-        content = await resp.read()
-        if auto_extension: #没有指定后缀，自动识别后缀名
-            try:
-                extension = filetype.guess_mime(content).split('/')[1]
-            except:
-                raise ValueError('不是有效文件类型')
-            abs_path = os.path.join(save_path, f'{save_name}.{extension}')
-        else:
-            abs_path = os.path.join(save_path, save_name)
-        with open(abs_path, 'wb') as f:
-            f.write(content)
-            return abs_path
+    resp= await aiorequests.get(url, stream=True)
+    if resp.status_code == 404:
+        raise ValueError('文件不存在')
+    content = await resp.content
+    if auto_extension: #没有指定后缀，自动识别后缀名
+        try:
+            extension = filetype.guess_mime(content).split('/')[1]
+        except:
+            raise ValueError('不是有效文件类型')
+        abs_path = os.path.join(save_path, f'{save_name}.{extension}')
+    else:
+        abs_path = os.path.join(save_path, save_name)
+    with open(abs_path, 'wb') as f:
+        f.write(content)
+        return abs_path
                                 
                                 
 @sv.on_prefix('添菜')
