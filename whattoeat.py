@@ -41,7 +41,7 @@ async def net_ease_cloud_word(bot,ev:CQEvent):
     uid = ev.user_id
     if not _lmt.check(uid):
         return
-    match = ev.match
+    match = ev['match']
     time = match.group(1).strip()
     food = get_foods()
     to_eat = f'{time}去吃{food["name"]}吧~'
@@ -56,7 +56,6 @@ async def net_ease_cloud_word(bot,ev:CQEvent):
     await bot.send(ev, to_eat, at_sender=True)
     _lmt.increase(uid)
 
-                                
 async def download_async(url: str, save_path: str, save_name: str, auto_extension=False):
     resp= await aiorequests.get(url, stream=True)
     if resp.status_code == 404:
@@ -73,8 +72,7 @@ async def download_async(url: str, save_path: str, save_name: str, auto_extensio
     with open(abs_path, 'wb') as f:
         f.write(content)
         return abs_path
-                                
-                                
+
 @sv.on_prefix('添菜')
 async def add_food(bot,ev:CQEvent):
     if not priv.check_priv(ev, priv.ADMIN):
