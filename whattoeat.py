@@ -33,7 +33,7 @@ async def net_ease_cloud_word(bot,ev:CQEvent):
     to_eat = f'{time}去吃{name[0]}吧~\n'
     try:
         foodimg = R.img(f'foods/{food}').cqcode
-        to_eat += foodimg
+        to_eat += str(foodimg)
     except Exception as e:
         hoshino.logger.error(f'读取食物图片时发生错误{type(e)}')
     await bot.send(ev, to_eat, at_sender=True)
