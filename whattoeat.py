@@ -62,6 +62,6 @@ async def add_food(bot,ev:CQEvent):
     if not ret:
         await bot.send(ev,'请附带美食图片~')
         return
-    url = ret.group(2)
+    url = ret[2]
     await download_async(url, food)
     await bot.send(ev,'食谱已增加~')
